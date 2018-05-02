@@ -1,0 +1,9 @@
+﻿################################################################################
+# This .gitignore file was automatically created by Microsoft(R) Visual Studio.
+################################################################################
+
+/.vs
+/Sokoban/bin/Debug
+/Sokoban/obj/Debug
+/Sokoban.Tests/bin/Debug
+/Sokoban.Tests/obj/Debug

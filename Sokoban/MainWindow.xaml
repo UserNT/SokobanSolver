@@ -1,0 +1,41 @@
+﻿<Window x:Class="Sokoban.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:controls="clr-namespace:Sokoban.Solver"
+        mc:Ignorable="d"
+        Title="MainWindow" Height="320" Width="400" WindowState="Maximized">
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition />
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition />
+        </Grid.RowDefinitions>
+        <TextBlock Text="Cookies:" Grid.Column="0" />
+        <TextBox x:Name="cookies" Text="lang=ru; sessionId=8542431285abe614fc9a867.02357227; userId=48971567; _ga=GA1.3.703182094.1522426113; _gid=GA1.3.638946989.1522426113; userName=UserNT; sig=7b933b835b7ef8ee6cd2d797d9317cf4cf7bc1b538686ebeb5c33fd1a8e2ffcb; showLoginFormFirst=1; _userId=undefined; _ym_uid=1522607063327570456" Grid.Column="1" />
+
+        <TextBlock x:Name="status" Grid.Column="1" Grid.Row="1" />
+        <Button Content="Start" Click="OnStartButton_Click" Grid.Row="1" />
+
+        <controls:NavigatorVisualizer x:Name="navigatorVisualizer" Grid.Column="1" Grid.Row="2">
+            <controls:NavigatorVisualizer.Template>
+                <ControlTemplate TargetType="controls:NavigatorVisualizer">
+                    <Grid x:Name="rootGrid" />
+                </ControlTemplate>
+            </controls:NavigatorVisualizer.Template>
+        </controls:NavigatorVisualizer>
+        
+        <controls:ColorMapControl x:Name="colorMapControl" Grid.Column="1" Grid.Row="2" Visibility="Hidden">
+            <controls:ColorMapControl.Template>
+                <ControlTemplate TargetType="controls:ColorMapControl">
+                    <Grid x:Name="rootGrid" />
+                </ControlTemplate>
+            </controls:ColorMapControl.Template>
+        </controls:ColorMapControl>
+    </Grid>
+</Window>
