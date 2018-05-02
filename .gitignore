@@ -5,5 +5,7 @@
 /.vs
 /Sokoban/bin/Debug
 /Sokoban/obj/Debug
+/Sokoban/obj/Release
 /Sokoban.Tests/bin/Debug
 /Sokoban.Tests/obj/Debug
+/Sokoban.Tests/obj/Release
