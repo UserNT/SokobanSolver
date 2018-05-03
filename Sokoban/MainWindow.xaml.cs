@@ -81,6 +81,19 @@ namespace Sokoban
             }
         }
 
+        private string[] levels = new[] { Solver.Sokoban.Level1Data, Solver.Sokoban.Level2Data, Solver.Sokoban.Level10Data, Solver.Sokoban.Level22Data, Solver.Sokoban.Level27Data };
+        private int currentLevel = 0;
+
+        private void OnNextButton_Click(object sender, RoutedEventArgs e)
+        {
+            currentLevel++;
+            if (currentLevel >= levels.Length)
+            {
+                currentLevel = 0;
+            }
+            managerControl.Manager = Network.Manager.Using(levels[currentLevel]);
+        }
+
         private async void OnStartButton_Click(object sender, RoutedEventArgs e)
         {
             //var navigator = Solver.Navigator.Using(Solver.Sokoban.Level10Data);
@@ -91,7 +104,8 @@ namespace Sokoban
             //navigator = navigator.ReplaceWithBoxes(anyGroup);
 
             //navigatorVisualizer.Navigator = navigator;
-            managerControl.Manager = Network.Manager.Using(Solver.Sokoban.Level27Data);
+            //managerControl.Manager = Network.Manager.Using(Solver.Sokoban.Level10Data);
+            managerControl.Manager = Network.Manager.Using(levels[currentLevel]);
 
             //var response = await Load(cookies.Text, 22);
             //var responseData = JsonConvert.DeserializeObject<Response>(response);

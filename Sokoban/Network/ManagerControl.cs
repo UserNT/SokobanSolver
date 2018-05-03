@@ -15,6 +15,8 @@ namespace Sokoban.Network
 
         private Grid rootGrid;
 
+        private bool showStepsToKeeper;
+
         public static readonly DependencyProperty ManagerProperty = DependencyProperty.Register("Manager", typeof(Manager), typeof(ManagerControl), new PropertyMetadata(null, OnManagerPropertyChanged));
 
         public Manager Manager
@@ -74,11 +76,12 @@ namespace Sokoban.Network
 
         private void OnManagerPropertyChanged()
         {
+            rootGrid.Children.Clear();
+            rootGrid.RowDefinitions.Clear();
+            rootGrid.ColumnDefinitions.Clear();
+
             if (Manager == null)
             {
-                rootGrid.Children.Clear();
-                rootGrid.RowDefinitions.Clear();
-                rootGrid.ColumnDefinitions.Clear();
                 return;
             }
 
@@ -120,7 +123,9 @@ namespace Sokoban.Network
 
                     var border = new Border();
                     border.Background = brushes[colorIndex];
+
                     DrawStepsToKeeper(pos, border);
+                    DrawLocationsOrder(pos, border);
 
                     border.SetValue(Grid.ColumnProperty, column);
                     border.SetValue(Grid.RowProperty, row);
@@ -143,15 +148,27 @@ namespace Sokoban.Network
                 dynCellInfo.StepsToKeeper > 0)
             {
                 var text = dynCellInfo.StepsToKeeper.ToString();
-
-                var viewBox = new Viewbox();
-                viewBox.Stretch = Stretch.Uniform;
-                viewBox.Child = new TextBlock() { Text = text, Foreground = new SolidColorBrush(Colors.Black) };
-                border.Child = viewBox;
+                ZoomeTextIntoBorder(border, text);
             }
         }
 
-        private bool showStepsToKeeper;
+        private void DrawLocationsOrder(int? pos, Border border)
+        {
+            Tuple<int, int> order;
+            if (Manager.StaticGraph[pos.Value].IsLocation && Manager.SortedLocations.TryGetValue(pos.Value, out order))
+            {
+                var text = string.Format("{0}/{1}", order.Item1, order.Item2);
+                ZoomeTextIntoBorder(border, text);
+            }
+        }
+
+        private static void ZoomeTextIntoBorder(Border border, string text)
+        {
+            var viewBox = new Viewbox();
+            viewBox.Stretch = Stretch.Uniform;
+            viewBox.Child = new TextBlock() { Text = text, Foreground = new SolidColorBrush(Colors.Black) };
+            border.Child = viewBox;
+        }
 
         private void Border_MouseDown(object sender, MouseButtonEventArgs e)
         {

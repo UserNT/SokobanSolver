@@ -17,6 +17,8 @@ namespace Sokoban.Network
         private readonly Dictionary<int, CellDynamicInfo> dynamicGraph = new Dictionary<int, CellDynamicInfo>();
         private readonly Dictionary<int, Area> areaGraph = new Dictionary<int, Area>();
 
+        private readonly Dictionary<int, Tuple<int, int>> sortedLocations = new Dictionary<int, Tuple<int, int>>();
+
         private Manager(int width, int height, string map)
         {
             this.Width = width;
@@ -78,6 +80,8 @@ namespace Sokoban.Network
         public IReadOnlyDictionary<int, CellDynamicInfo> DynamicGraph => dynamicGraph;
 
         public IReadOnlyDictionary<int, Area> AreaGraph => areaGraph;
+
+        public Dictionary<int, Tuple<int, int>> SortedLocations => sortedLocations;
 
         public int KeeperPosition { get; private set; }
 
@@ -164,6 +168,7 @@ namespace Sokoban.Network
             keeperArea.Add(keeperCell.Position);
             areaGraph.Add(keeperArea.Id, keeperArea);
 
+            dynamicGraph[keeperCell.Position].AreaId = keeperArea.Id;
             dynamicGraph[keeperCell.Position].StepsToKeeper = 0;
 
             do
@@ -327,23 +332,89 @@ namespace Sokoban.Network
 
         private void SortLocations()
         {
+            SortedLocations.Clear();
+
             var backupBoxPositions = dynamicGraph.Where(x => x.Value.HoldsBox)
                                                  .Select(x => x.Key)
                                                  .ToList();
             var backupKeeperPosition = KeeperPosition;
 
+            var locationsCount = staticGraph.Where(pair => pair.Value.IsLocation).Count();
+
             var entryPoints = staticGraph.Where(pair => pair.Value.IsLocation)
                                          .SelectMany(pair => GetEntryPoints(pair.Value))
                                          .ToList();
-
+            entryPoints.Reverse();
             foreach (var ep in entryPoints)
             {
-                SimulateSingleBoxPosition(ep);
+                var scope = new Queue<Tuple<Key, int, int>>();
+                scope.Enqueue(new Tuple<Key, int, int>(ep.Key, ep.Position, 1));
 
+                while (scope.Count > 0)
+                {
+                    var task = scope.Dequeue();
 
+                    Key key = task.Item1;
+                    int boxPosition = task.Item2;
+                    int currentRound = task.Item3;
+                    int currentStep = 1;
+
+                    SimulateSingleBoxPosition(key, boxPosition);
+
+                    int? targetBoxPosition;
+                    while (CanMoveBox(key, boxPosition, out targetBoxPosition))
+                    {
+                        MoveKeeper(key);
+
+                        Tuple<int, int> alreadyEstimated;
+                        if (SortedLocations.TryGetValue(targetBoxPosition.Value, out alreadyEstimated))
+                        {
+                            //if (alreadyEstimated.Item1 > currentRound || alreadyEstimated.Item2 > currentStep)
+                            //{
+                            //    SortedLocations[targetBoxPosition.Value] = new Tuple<int, int>(currentRound, currentStep);
+                            //}
+                            //else
+                            {
+                                continue;
+                            }
+                        }
+                        else
+                        {
+                            SortedLocations.Add(targetBoxPosition.Value, new Tuple<int, int>(currentRound, currentStep));
+                        }
+
+                        var keeperAreaId = dynamicGraph[KeeperPosition].AreaId;
+
+                        var key1 = GetNextClockwiseKey(key);
+                        var expectedKeeperPosition = GetPosition(GetOppositeKey(key1), targetBoxPosition).Value;
+
+                        if (areaGraph[keeperAreaId].Contains(expectedKeeperPosition))
+                        {
+                            scope.Enqueue(new Tuple<Key, int, int>(key1, targetBoxPosition.Value, currentRound + 1));
+                        }
+
+                        var key2 = GetNextConterClockwiseKey(key);
+                        expectedKeeperPosition = GetPosition(GetOppositeKey(key2), targetBoxPosition).Value;
+
+                        if (areaGraph[keeperAreaId].Contains(expectedKeeperPosition))
+                        {
+                            scope.Enqueue(new Tuple<Key, int, int>(key2, targetBoxPosition.Value, currentRound + 1));
+                        }
+
+                        boxPosition = targetBoxPosition.Value;
+                        currentStep++;
+                    }
+                }
+
+                SimulateSingleBoxPosition(ep.Key, ep.Position);
+
+                if (SortedLocations.Count >= locationsCount)
+                {
+                    break;
+                }
             }
 
-            RecoverFromBackup(backupBoxPositions, backupKeeperPosition);
+            //RecoverFromBackup(backupBoxPositions, backupKeeperPosition);
         }
 
         private void RecoverFromBackup(List<int> backupBoxPositions, int backupKeeperPosition)
@@ -363,18 +434,18 @@ namespace Sokoban.Network
             DetectAreas();
         }
 
-        private void SimulateSingleBoxPosition(SokobanPathItem ep)
+        private void SimulateSingleBoxPosition(Key key, int boxPosition)
         {
             // simulate single box position
             foreach (var box in dynamicGraph.Values.Where(x => x.HoldsBox))
             {
                 box.HoldsBox = false;
             }
-            dynamicGraph[ep.Position].HoldsBox = true;
-            dynamicGraph[ep.Position].StepsToKeeper = StepsToInaccessibleKeeper;
+            dynamicGraph[boxPosition].HoldsBox = true;
+            dynamicGraph[boxPosition].StepsToKeeper = StepsToInaccessibleKeeper;
 
             // simulate keeper position to push box on location
-            KeeperPosition = GetPosition(GetOppositeKey(ep.Key), ep.Position).Value;
+            KeeperPosition = GetPosition(GetOppositeKey(key), boxPosition).Value;
 
             DetectAreas();
         }
@@ -411,6 +482,22 @@ namespace Sokoban.Network
             return key == Key.Up ? Key.Down :
                    key == Key.Down ? Key.Up :
                    key == Key.Left ? Key.Right :
+                   Key.Left;
+        }
+
+        public Key GetNextClockwiseKey(Key key)
+        {
+            return key == Key.Left ? Key.Up :
+                   key == Key.Up ? Key.Right :
+                   key == Key.Right ? Key.Down :
+                   Key.Left;
+        }
+
+        public Key GetNextConterClockwiseKey(Key key)
+        {
+            return key == Key.Left ? Key.Down :
+                   key == Key.Down ? Key.Right :
+                   key == Key.Right ? Key.Up :
                    Key.Left;
         }
 
@@ -639,7 +726,7 @@ namespace Sokoban.Network
                         dynamicGraph.TryGetValue(targetBoxPos.Value, out targetBoxDynCellInfo))
                     {
                         dynamicGraph[targetBoxPos.Value].HoldsBox = true;
-                        dynamicGraph[targetBoxPos.Value].StepsToKeeper = -1;
+                        dynamicGraph[targetBoxPos.Value].StepsToKeeper = StepsToInaccessibleKeeper;
 
                         targetKeeperDynCellInfo.HoldsBox = false;
 

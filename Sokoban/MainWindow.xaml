@@ -23,6 +23,8 @@
         <TextBlock x:Name="status" Grid.Column="1" Grid.Row="1" />
         <Button Content="Start" Click="OnStartButton_Click" Grid.Row="1" />
 
+        <Button Content="Next Level" Click="OnNextButton_Click" HorizontalAlignment="Left" Grid.Column="1" Grid.Row="1" />
+
         <network:ManagerControl x:Name="managerControl" Grid.Column="1" Grid.Row="2">
             <network:ManagerControl.Template>
                 <ControlTemplate TargetType="network:ManagerControl">
