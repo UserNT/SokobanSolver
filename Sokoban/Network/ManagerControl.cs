@@ -120,24 +120,51 @@ namespace Sokoban.Network
 
                     var border = new Border();
                     border.Background = brushes[colorIndex];
-
-                    CellDynamicInfo dynCellInfo;
-                    if (Manager.DynamicGraph.TryGetValue(pos.Value, out dynCellInfo) &&
-                        dynCellInfo.StepsToKeeper > 0)
-                    {
-                        var text = dynCellInfo.StepsToKeeper.ToString();
-
-                        var viewBox = new Viewbox();
-                        viewBox.Stretch = Stretch.Uniform;
-                        viewBox.Child = new TextBlock() { Text = text, Foreground = new SolidColorBrush(Colors.Black) };
-                        border.Child = viewBox;
-                    }
+                    DrawStepsToKeeper(pos, border);
 
                     border.SetValue(Grid.ColumnProperty, column);
                     border.SetValue(Grid.RowProperty, row);
+                    border.MouseDown += Border_MouseDown;
 
                     rootGrid.Children.Add(border);
                 }
+            }
+        }
+
+        private void DrawStepsToKeeper(int? pos, Border border)
+        {
+            if (!showStepsToKeeper)
+            {
+                return;
+            }
+
+            CellDynamicInfo dynCellInfo;
+            if (Manager.DynamicGraph.TryGetValue(pos.Value, out dynCellInfo) &&
+                dynCellInfo.StepsToKeeper > 0)
+            {
+                var text = dynCellInfo.StepsToKeeper.ToString();
+
+                var viewBox = new Viewbox();
+                viewBox.Stretch = Stretch.Uniform;
+                viewBox.Child = new TextBlock() { Text = text, Foreground = new SolidColorBrush(Colors.Black) };
+                border.Child = viewBox;
+            }
+        }
+
+        private bool showStepsToKeeper;
+
+        private void Border_MouseDown(object sender, MouseButtonEventArgs e)
+        {
+            var border = (Border)sender;
+
+            var column = (int)border.GetValue(Grid.ColumnProperty);
+            var row = (int)border.GetValue(Grid.RowProperty);
+
+            var pos = Manager.GetPosition(column, row);
+            if (pos == Manager.KeeperPosition)
+            {
+                showStepsToKeeper = !showStepsToKeeper;
+                DrawElements();
             }
         }
 

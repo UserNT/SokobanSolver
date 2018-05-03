@@ -16,7 +16,6 @@ namespace Sokoban.Network
 
         private readonly Dictionary<int, CellDynamicInfo> dynamicGraph = new Dictionary<int, CellDynamicInfo>();
         private readonly Dictionary<int, Area> areaGraph = new Dictionary<int, Area>();
-        private int keeperPosition;
 
         private Manager(int width, int height, string map)
         {
@@ -27,6 +26,7 @@ namespace Sokoban.Network
             InitializeGraphs();
             DetectAreas();
             FilterOutsiders();
+            SortLocations();
         }
 
         #region Properties
@@ -56,14 +56,14 @@ namespace Sokoban.Network
                     else if (cell.IsLocation)
                     {
                         if (dynCellInfo.HoldsBox) return Solver.Sokoban.BOX_ON_LOCATION;
-                        if (cell.Position == keeperPosition) return Solver.Sokoban.KEEPER_ON_LOCATION;
+                        if (cell.Position == KeeperPosition) return Solver.Sokoban.KEEPER_ON_LOCATION;
                         return Solver.Sokoban.LOCATION;
                     }
                     else if (dynCellInfo.HoldsBox)
                     {
                         return Solver.Sokoban.BOX;
                     }
-                    else if (cell.Position == keeperPosition)
+                    else if (cell.Position == KeeperPosition)
                     {
                         return Solver.Sokoban.KEEPER;
                     }
@@ -78,6 +78,8 @@ namespace Sokoban.Network
         public IReadOnlyDictionary<int, CellDynamicInfo> DynamicGraph => dynamicGraph;
 
         public IReadOnlyDictionary<int, Area> AreaGraph => areaGraph;
+
+        public int KeeperPosition { get; private set; }
 
         #endregion
 
@@ -130,7 +132,7 @@ namespace Sokoban.Network
             if (map[pos] == Solver.Sokoban.KEEPER ||
                 map[pos] == Solver.Sokoban.KEEPER_ON_LOCATION)
             {
-                keeperPosition = pos;
+                KeeperPosition = pos;
             }
 
             dynamicGraph.Add(pos, cell);
@@ -150,7 +152,7 @@ namespace Sokoban.Network
 
         private BitArray DetectKeeperArea()
         {
-            var keeperCell = staticGraph[keeperPosition];
+            var keeperCell = staticGraph[KeeperPosition];
 
             var neighboursScope = new Queue<Tuple<int, CellStaticInfo>>();
             neighboursScope.Enqueue(new Tuple<int, CellStaticInfo>(1, keeperCell));
@@ -316,6 +318,45 @@ namespace Sokoban.Network
 
                 area.Clear();
                 areaGraph.Remove(areaId);
+            }
+        }
+
+        #endregion
+
+        #region Sort Locations
+
+        private void SortLocations()
+        {
+            var entryPoints = staticGraph.Where(pair => pair.Value.IsLocation)
+                                         .SelectMany(pair => GetEntryPoints(pair.Value))
+                                         .ToList();
+
+            foreach (var ep in entryPoints)
+            {
+
+            }
+        }
+
+        private IEnumerable<SokobanPathItem> GetEntryPoints(CellStaticInfo locationCell)
+        {
+            if (!locationCell.Left.IsWall && !locationCell.Left.IsLocation && !locationCell.Left.Left.IsWall && !locationCell.Left.Left.IsLocation)
+            {
+                yield return new SokobanPathItem() { Key = Key.Right, Position = GetPosition(Key.Left, locationCell.Position).Value };
+            }
+
+            if (!locationCell.Top.IsWall && !locationCell.Top.IsLocation && !locationCell.Top.Top.IsWall && !locationCell.Top.Top.IsLocation)
+            {
+                yield return new SokobanPathItem() { Key = Key.Down, Position = GetPosition(Key.Up, locationCell.Position).Value };
+            }
+
+            if (!locationCell.Right.IsWall && !locationCell.Right.IsLocation && !locationCell.Right.Right.IsWall && !locationCell.Right.Right.IsLocation)
+            {
+                yield return new SokobanPathItem() { Key = Key.Left, Position = GetPosition(Key.Right, locationCell.Position).Value };
+            }
+
+            if (!locationCell.Bottom.IsWall && !locationCell.Bottom.IsLocation && !locationCell.Bottom.Bottom.IsWall && !locationCell.Bottom.Bottom.IsLocation)
+            {
+                yield return new SokobanPathItem() { Key = Key.Up, Position = GetPosition(Key.Down, locationCell.Position).Value };
             }
         }
 
@@ -503,10 +544,10 @@ namespace Sokoban.Network
 
         private bool CanMoveKeeper(Key key)
         {
-            var targetKeeperPos = GetPosition(key, keeperPosition);
+            var targetKeeperPos = GetPosition(key, KeeperPosition);
 
             CellDynamicInfo keeperDynCellInfo, targetKeeperDynCellInfo;
-            if (dynamicGraph.TryGetValue(keeperPosition, out keeperDynCellInfo) &&
+            if (dynamicGraph.TryGetValue(KeeperPosition, out keeperDynCellInfo) &&
                 dynamicGraph.TryGetValue(targetKeeperPos.Value, out targetKeeperDynCellInfo))
             {
                 if (CanHoldKeeper(targetKeeperPos.Value))
@@ -528,15 +569,15 @@ namespace Sokoban.Network
 
         private void MoveKeeper(Key key)
         {
-            var targetKeeperPos = GetPosition(key, keeperPosition);
+            var targetKeeperPos = GetPosition(key, KeeperPosition);
 
             CellDynamicInfo keeperDynCellInfo, targetKeeperDynCellInfo;
-            if (dynamicGraph.TryGetValue(keeperPosition, out keeperDynCellInfo) &&
+            if (dynamicGraph.TryGetValue(KeeperPosition, out keeperDynCellInfo) &&
                 dynamicGraph.TryGetValue(targetKeeperPos.Value, out targetKeeperDynCellInfo))
             {
                 if (CanHoldKeeper(targetKeeperPos.Value))
                 {
-                    keeperPosition = targetKeeperPos.Value;
+                    KeeperPosition = targetKeeperPos.Value;
                     DetectAreas();
                 }
                 else if (targetKeeperDynCellInfo.HoldsBox)
@@ -552,7 +593,7 @@ namespace Sokoban.Network
 
                         targetKeeperDynCellInfo.HoldsBox = false;
 
-                        keeperPosition = targetKeeperPos.Value;
+                        KeeperPosition = targetKeeperPos.Value;
                         DetectAreas();
                     }
                 }
