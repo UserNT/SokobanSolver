@@ -83,14 +83,15 @@ namespace Sokoban
 
         private async void OnStartButton_Click(object sender, RoutedEventArgs e)
         {
-            var navigator = Solver.Navigator.Using(Solver.Sokoban.Level10Data);
+            //var navigator = Solver.Navigator.Using(Solver.Sokoban.Level10Data);
             //var locationGroups = Solver.Graph.GetLocationGroups(navigator);
             //var order = Graph.GetFillingOrder(navigator, locationGroups.Values);
             //var anyGroup = locationGroups.First().Value;
             //var steps = anyGroup.GetFillingSteps(navigator);
             //navigator = navigator.ReplaceWithBoxes(anyGroup);
-            
-            navigatorVisualizer.Navigator = navigator;
+
+            //navigatorVisualizer.Navigator = navigator;
+            managerControl.Manager = Network.Manager.Using(Solver.Sokoban.Level27Data);
 
             //var response = await Load(cookies.Text, 22);
             //var responseData = JsonConvert.DeserializeObject<Response>(response);

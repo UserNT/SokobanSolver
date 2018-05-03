@@ -65,8 +65,11 @@
     <Compile Include="AStar\Node.cs" />
     <Compile Include="AStar\NodeState.cs" />
     <Compile Include="AStar\PathFinder.cs" />
-    <Compile Include="Network\Cell.cs" />
+    <Compile Include="Network\Area.cs" />
+    <Compile Include="Network\CellDynamicInfo.cs" />
+    <Compile Include="Network\CellStaticInfo.cs" />
     <Compile Include="Network\Manager.cs" />
+    <Compile Include="Network\ManagerControl.cs" />
     <Compile Include="Position.cs" />
     <Compile Include="SokobanAI.cs" />
     <Compile Include="Solver\Agent.cs" />

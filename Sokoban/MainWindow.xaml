@@ -4,6 +4,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:controls="clr-namespace:Sokoban.Solver"
+        xmlns:network="clr-namespace:Sokoban.Network"
         mc:Ignorable="d"
         Title="MainWindow" Height="320" Width="400" WindowState="Maximized">
     <Grid>
@@ -22,7 +23,15 @@
         <TextBlock x:Name="status" Grid.Column="1" Grid.Row="1" />
         <Button Content="Start" Click="OnStartButton_Click" Grid.Row="1" />
 
-        <controls:NavigatorVisualizer x:Name="navigatorVisualizer" Grid.Column="1" Grid.Row="2">
+        <network:ManagerControl x:Name="managerControl" Grid.Column="1" Grid.Row="2">
+            <network:ManagerControl.Template>
+                <ControlTemplate TargetType="network:ManagerControl">
+                    <Grid x:Name="rootGrid" />
+                </ControlTemplate>
+            </network:ManagerControl.Template>
+        </network:ManagerControl>
+        
+        <!--<controls:NavigatorVisualizer x:Name="navigatorVisualizer" Grid.Column="1" Grid.Row="2">
             <controls:NavigatorVisualizer.Template>
                 <ControlTemplate TargetType="controls:NavigatorVisualizer">
                     <Grid x:Name="rootGrid" />
@@ -36,6 +45,6 @@
                     <Grid x:Name="rootGrid" />
                 </ControlTemplate>
             </controls:ColorMapControl.Template>
-        </controls:ColorMapControl>
+        </controls:ColorMapControl>-->
     </Grid>
 </Window>
