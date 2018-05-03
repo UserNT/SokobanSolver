@@ -10,13 +10,13 @@ namespace Sokoban.Network
 {
     public class Manager
     {
+        private const int StepsToInaccessibleKeeper = -1;
         private readonly Dictionary<int, CellStaticInfo> staticGraph = new Dictionary<int, CellStaticInfo>();
         private readonly string map;
 
         private readonly Dictionary<int, CellDynamicInfo> dynamicGraph = new Dictionary<int, CellDynamicInfo>();
         private readonly Dictionary<int, Area> areaGraph = new Dictionary<int, Area>();
         private int keeperPosition;
-        private int nextAreaId = 0;
 
         private Manager(int width, int height, string map)
         {
@@ -29,18 +29,48 @@ namespace Sokoban.Network
             FilterOutsiders();
         }
 
+        #region Properties
+
         public int Width { get; }
 
         public int Height { get; }
 
-        public char this[int? pos]
+        private char this[int? pos]
         {
-            get { return pos.HasValue ? map[pos.Value] : char.MaxValue; }
+            get { return pos.HasValue ? this[pos.Value] : char.MaxValue; }
         }
 
         public char this[int pos]
         {
-            get { return map[pos]; }
+            get
+            {
+                CellStaticInfo cell;
+                CellDynamicInfo dynCellInfo;
+                if (staticGraph.TryGetValue(pos, out cell) &&
+                    dynamicGraph.TryGetValue(pos, out dynCellInfo))
+                {
+                    if (cell.IsWall)
+                    {
+                        return Solver.Sokoban.WALL;
+                    }
+                    else if (cell.IsLocation)
+                    {
+                        if (dynCellInfo.HoldsBox) return Solver.Sokoban.BOX_ON_LOCATION;
+                        if (dynCellInfo.HoldsKeeper) return Solver.Sokoban.KEEPER_ON_LOCATION;
+                        return Solver.Sokoban.LOCATION;
+                    }
+                    else if (dynCellInfo.HoldsBox)
+                    {
+                        return Solver.Sokoban.BOX;
+                    }
+                    else if (dynCellInfo.HoldsKeeper)
+                    {
+                        return Solver.Sokoban.KEEPER;
+                    }
+                }
+
+                return Solver.Sokoban.EMPTY;
+            }
         }
 
         public IReadOnlyDictionary<int, CellStaticInfo> StaticGraph => staticGraph;
@@ -48,6 +78,10 @@ namespace Sokoban.Network
         public IReadOnlyDictionary<int, CellDynamicInfo> DynamicGraph => dynamicGraph;
 
         public IReadOnlyDictionary<int, Area> AreaGraph => areaGraph;
+
+        #endregion
+
+        #region Initialization
 
         private void InitializeGraphs()
         {
@@ -114,19 +148,14 @@ namespace Sokoban.Network
             dynamicGraph.Add(pos, cell);
         }
 
-        private void ForEachCell(Action<int, int> action)
-        {
-            for (int y = 0; y < Height; y++)
-            {
-                for (int x = 0; x < Width; x++)
-                {
-                    action(x, y);
-                }
-            }
-        }
+        #endregion
+
+        #region Detect Areas
 
         private void DetectAreas()
         {
+            areaGraph.Clear();
+
             var visited = DetectKeeperArea();
             DetectRemainAreas(visited);
         }
@@ -141,7 +170,7 @@ namespace Sokoban.Network
             var visited = new BitArray(Width * Height);
             visited.Set(keeperCell.Position, true);
 
-            var keeperArea = new Area(nextAreaId++);
+            var keeperArea = new Area(areaGraph.Keys.Count);
             keeperArea.Add(keeperCell.Position);
             areaGraph.Add(keeperArea.Id, keeperArea);
 
@@ -177,7 +206,7 @@ namespace Sokoban.Network
 
         private void DetectRemainAreas(BitArray visited)
         {
-            var area = new Area(nextAreaId++);
+            var area = new Area(areaGraph.Keys.Count);
 
             var neighboursScope = new Queue<CellStaticInfo>();
 
@@ -188,7 +217,7 @@ namespace Sokoban.Network
                     var posDynCellInfo = dynamicGraph[pos];
 
                     posDynCellInfo.AreaId = area.Id;
-                    posDynCellInfo.StepsToKeeper = 0;
+                    posDynCellInfo.StepsToKeeper = StepsToInaccessibleKeeper;
 
                     area.Add(pos);
                     neighboursScope.Enqueue(staticGraph[pos]);
@@ -204,7 +233,7 @@ namespace Sokoban.Network
                             if (!visited.Get(neighbour.Position) && neighbourDynCellInfo.CanHoldKeeper)
                             {
                                 neighbourDynCellInfo.AreaId = area.Id;
-                                neighbourDynCellInfo.StepsToKeeper = 0;
+                                neighbourDynCellInfo.StepsToKeeper = StepsToInaccessibleKeeper;
 
                                 area.Add(neighbour.Position);
                                 visited.Set(neighbour.Position, true);
@@ -219,7 +248,7 @@ namespace Sokoban.Network
                 if (area.Count > 0)
                 {
                     areaGraph.Add(area.Id, area);
-                    area = new Area(nextAreaId++);
+                    area = new Area(areaGraph.Keys.Count);
                 }
             }
         }
@@ -232,17 +261,9 @@ namespace Sokoban.Network
             if (cell.Bottom != null) yield return cell.Bottom;
         }
 
-        private IEnumerable<int> GetNeighbours(int pos)
-        {
-            foreach (var key in Solver.Sokoban.SupportedKeys)
-            {
-                var neighbor = GetPosition(key, pos);
-                if (neighbor.HasValue)
-                {
-                    yield return neighbor.Value;
-                }
-            }
-        }
+        #endregion
+
+        #region Filter outsiders
 
         private void FilterOutsiders()
         {
@@ -310,6 +331,10 @@ namespace Sokoban.Network
             }
         }
 
+        #endregion
+
+        #region GetPosition
+
         public int? GetPosition(int column, int row)
         {
             var pos = row * Width + column;
@@ -357,6 +382,10 @@ namespace Sokoban.Network
             return new Point(x, y);
         }
 
+        #endregion
+
+        #region Corner check
+
         private bool IsLeftTopCorner(int position)
         {
             var left = GetPosition(Key.Left, position);
@@ -401,6 +430,76 @@ namespace Sokoban.Network
                    (this[rightBottom] == Solver.Sokoban.WALL || this[rightBottom] == Solver.Sokoban.BOX);
         }
 
+        #endregion
+
+        #region Movements
+
+        public bool HandleKeyDown(Key key)
+        {
+            if (Solver.Sokoban.SupportedKeys.Contains(key))
+            {
+                if (CanMoveKeeper(key))
+                {
+                    MoveKeeper(key);
+                }
+
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+
+        private bool CanMoveKeeper(Key key)
+        {
+            var targetPos = GetPosition(key, keeperPosition);
+
+            CellDynamicInfo keeperDynCellInfo, targetDynCellInfo;
+            if (dynamicGraph.TryGetValue(keeperPosition, out keeperDynCellInfo) &&
+                dynamicGraph.TryGetValue(targetPos.Value, out targetDynCellInfo))
+            {
+                if (targetDynCellInfo.CanHoldKeeper)
+                {
+                    return true;
+                }
+                else if (targetDynCellInfo.HoldsBox)
+                {
+
+                }
+            }
+
+            return false;
+        }
+
+        private void MoveKeeper(Key key)
+        {
+            var targetPos = GetPosition(key, keeperPosition);
+
+            CellDynamicInfo keeperDynCellInfo, targetDynCellInfo;
+            if (dynamicGraph.TryGetValue(keeperPosition, out keeperDynCellInfo) &&
+                dynamicGraph.TryGetValue(targetPos.Value, out targetDynCellInfo))
+            {
+                if (targetDynCellInfo.CanHoldKeeper)
+                {
+                    keeperDynCellInfo.HoldsKeeper = false;
+                    targetDynCellInfo.HoldsKeeper = true;
+
+                    keeperPosition = targetPos.Value;
+
+                    DetectAreas();
+                }
+                else if (targetDynCellInfo.HoldsBox)
+                {
+
+                }
+            }
+        }
+
+        #endregion
+
+        #region Using
+
         public static Manager Using(string gameData)
         {
             if (gameData.Contains('{'))
@@ -419,5 +518,7 @@ namespace Sokoban.Network
         {
             return new Manager(width, height, map);
         }
+
+        #endregion
     }
 }

@@ -43,7 +43,7 @@ namespace Sokoban.Network
         {
             brushes = typeof(Colors).GetProperties(System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public)
                                     .Select(pi => (Color)pi.GetValue(null))
-                                    .Where(c => c != Colors.Red && c != Colors.Blue && c != Colors.Lime)
+                                    .Where(c => c != Colors.Red && c != Colors.Blue && c != Colors.Lime && c != Colors.Black)
                                     .OrderBy(pi => Guid.NewGuid())
                                     .Select((c, i) => new { key = Convert.ToChar(i), Value = c })
                                     .ToDictionary(x => x.key, x => (new SolidColorBrush(x.Value)) as Brush);
@@ -59,6 +59,17 @@ namespace Sokoban.Network
         private Brush GetImageBrush(string resourceName)
         {
             return new ImageBrush(new BitmapImage(new Uri("pack://application:,,,/Sokoban;component/Resources/" + resourceName)));
+        }
+
+        protected override void OnKeyDown(KeyEventArgs e)
+        {
+            if (Manager != null &&
+                Manager.HandleKeyDown(e.Key))
+            {
+                DrawElements();
+
+                e.Handled = true;
+            }
         }
 
         private void OnManagerPropertyChanged()
@@ -105,7 +116,7 @@ namespace Sokoban.Network
                         continue;
                     }
 
-                    var colorIndex = Manager[pos.Value] == Solver.Sokoban.EMPTY ? (char)(Manager.DynamicGraph[pos.Value].AreaId + 7) : Manager[pos.Value];
+                    char colorIndex = GetColorIndex(pos);
 
                     var border = new Border();
                     border.Background = brushes[colorIndex];
@@ -128,6 +139,29 @@ namespace Sokoban.Network
                     rootGrid.Children.Add(border);
                 }
             }
+        }
+
+        private char GetColorIndex(int? pos)
+        {
+            var colorIndex = Manager[pos.Value];
+
+            if (colorIndex == Solver.Sokoban.EMPTY)
+            {
+                colorIndex = (char)Manager.DynamicGraph[pos.Value].AreaId;
+
+                while (colorIndex >= brushes.Count)
+                {
+                    colorIndex = (char)(colorIndex - brushes.Count);
+                }
+
+                if (colorIndex >= Solver.Sokoban.KEEPER &&
+                    colorIndex <= Solver.Sokoban.KEEPER_ON_LOCATION)
+                {
+                    colorIndex = (char)(colorIndex + 7);
+                }
+            }
+
+            return colorIndex;
         }
 
         private void AddEntryPoint(Dictionary<int, List<SokobanPathItem>> graph, int position, Key key, int neighbor)
