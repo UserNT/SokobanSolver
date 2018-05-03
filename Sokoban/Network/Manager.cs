@@ -124,16 +124,6 @@ namespace Sokoban.Network
         {
             var cell = new CellDynamicInfo();
 
-            cell.CanHoldBox = map[pos] != Solver.Sokoban.WALL &&
-                              !IsLeftTopCorner(pos) &&
-                              !IsRightTopCorner(pos) &&
-                              !IsLeftBottomCorner(pos) &&
-                              !IsRightBottomCorner(pos);
-
-            cell.CanHoldKeeper = map[pos] != Solver.Sokoban.WALL &&
-                                 map[pos] != Solver.Sokoban.BOX &&
-                                 map[pos] != Solver.Sokoban.BOX_ON_LOCATION;
-
             cell.HoldsBox = map[pos] == Solver.Sokoban.BOX ||
                             map[pos] == Solver.Sokoban.BOX_ON_LOCATION;
 
@@ -187,7 +177,7 @@ namespace Sokoban.Network
                 {
                     var dynCellInfo = dynamicGraph[neighbour.Position];
 
-                    if (!visited.Get(neighbour.Position) && dynCellInfo.CanHoldKeeper)
+                    if (!visited.Get(neighbour.Position) && CanHoldKeeper(neighbour.Position))
                     {
                         dynCellInfo.AreaId = keeperArea.Id;
                         dynCellInfo.StepsToKeeper = stepsToKeeper;
@@ -212,7 +202,7 @@ namespace Sokoban.Network
 
             foreach (var pos in staticGraph.Keys)
             {
-                if (!visited.Get(pos) && dynamicGraph[pos].CanHoldKeeper)
+                if (!visited.Get(pos) && CanHoldKeeper(pos))
                 {
                     var posDynCellInfo = dynamicGraph[pos];
 
@@ -230,7 +220,7 @@ namespace Sokoban.Network
                         {
                             var neighbourDynCellInfo = dynamicGraph[neighbour.Position];
 
-                            if (!visited.Get(neighbour.Position) && neighbourDynCellInfo.CanHoldKeeper)
+                            if (!visited.Get(neighbour.Position) && CanHoldKeeper(neighbour.Position))
                             {
                                 neighbourDynCellInfo.AreaId = area.Id;
                                 neighbourDynCellInfo.StepsToKeeper = StepsToInaccessibleKeeper;
@@ -386,48 +376,99 @@ namespace Sokoban.Network
 
         #region Corner check
 
+        public bool CanMoveBox(Key key, int boxPosition, out int? targetBoxPosition)
+        {
+            targetBoxPosition = GetPosition(key, boxPosition);
+            if (!targetBoxPosition.HasValue)
+            {
+                return false;
+            }
+
+            var cellTypeAtNewPosition = this[targetBoxPosition];
+            if (staticGraph[targetBoxPosition.Value].IsWall ||
+                dynamicGraph[targetBoxPosition.Value].HoldsBox)
+            {
+                return false;
+            }
+            else if (staticGraph[targetBoxPosition.Value].IsLocation)
+            {
+                return true;
+            }
+
+            if (key == Key.Left)
+            {
+                if (IsLeftTopCorner(targetBoxPosition.Value) || IsLeftBottomCorner(targetBoxPosition.Value))
+                {
+                    return false;
+                }
+            }
+            else if (key == Key.Up)
+            {
+                if (IsLeftTopCorner(targetBoxPosition.Value) || IsRightTopCorner(targetBoxPosition.Value))
+                {
+                    return false;
+                }
+            }
+            else if (key == Key.Right)
+            {
+                if (IsRightTopCorner(targetBoxPosition.Value) || IsRightBottomCorner(targetBoxPosition.Value))
+                {
+                    return false;
+                }
+            }
+            else if (key == Key.Down)
+            {
+                if (IsLeftBottomCorner(targetBoxPosition.Value) || IsRightBottomCorner(targetBoxPosition.Value))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
         private bool IsLeftTopCorner(int position)
         {
-            var left = GetPosition(Key.Left, position);
-            var top = GetPosition(Key.Up, position);
-            var leftTop = GetPosition(Key.Up, left);
+            var left = staticGraph[position].Left;
+            var top = staticGraph[position].Top;
+            var leftTop = left.Top;
 
-            return (this[left] == Solver.Sokoban.WALL || this[left] == Solver.Sokoban.BOX) &&
-                   (this[top] == Solver.Sokoban.WALL || this[top] == Solver.Sokoban.BOX) &&
-                   (this[leftTop] == Solver.Sokoban.WALL || this[leftTop] == Solver.Sokoban.BOX);
+            return (left.IsWall || dynamicGraph[left.Position].HoldsBox) &&
+                   (top.IsWall || dynamicGraph[top.Position].HoldsBox) &&
+                   (leftTop.IsWall || dynamicGraph[leftTop.Position].HoldsBox);
         }
 
         private bool IsRightTopCorner(int position)
         {
-            var right = GetPosition(Key.Right, position);
-            var top = GetPosition(Key.Up, position);
-            var rightTop = GetPosition(Key.Up, right);
+            var right = staticGraph[position].Right;
+            var top = staticGraph[position].Top;
+            var rightTop = right.Top;
 
-            return (this[right] == Solver.Sokoban.WALL || this[right] == Solver.Sokoban.BOX) &&
-                   (this[top] == Solver.Sokoban.WALL || this[top] == Solver.Sokoban.BOX) &&
-                   (this[rightTop] == Solver.Sokoban.WALL || this[rightTop] == Solver.Sokoban.BOX);
+            return (right.IsWall || dynamicGraph[right.Position].HoldsBox) &&
+                   (top.IsWall || dynamicGraph[top.Position].HoldsBox) &&
+                   (rightTop.IsWall || dynamicGraph[rightTop.Position].HoldsBox);
         }
 
         private bool IsLeftBottomCorner(int position)
         {
-            var left = GetPosition(Key.Left, position);
-            var bottom = GetPosition(Key.Down, position);
-            var leftBottom = GetPosition(Key.Down, left);
+            var left = staticGraph[position].Left;
+            var bottom = staticGraph[position].Bottom;
+            var leftBottom = left.Bottom;
 
-            return (this[left] == Solver.Sokoban.WALL || this[left] == Solver.Sokoban.BOX) &&
-                   (this[bottom] == Solver.Sokoban.WALL || this[bottom] == Solver.Sokoban.BOX) &&
-                   (this[leftBottom] == Solver.Sokoban.WALL || this[leftBottom] == Solver.Sokoban.BOX);
+            return (left.IsWall || dynamicGraph[left.Position].HoldsBox) &&
+                   (bottom.IsWall || dynamicGraph[bottom.Position].HoldsBox) &&
+                   (leftBottom.IsWall || dynamicGraph[leftBottom.Position].HoldsBox);
         }
 
         private bool IsRightBottomCorner(int position)
         {
-            var right = GetPosition(Key.Right, position);
-            var bottom = GetPosition(Key.Down, position);
-            var rightBottom = GetPosition(Key.Down, right);
+            var right = staticGraph[position].Right;
+            var bottom = staticGraph[position].Bottom;
+            var rightBottom = right.Bottom;
 
-            return (this[right] == Solver.Sokoban.WALL || this[right] == Solver.Sokoban.BOX) &&
-                   (this[bottom] == Solver.Sokoban.WALL || this[bottom] == Solver.Sokoban.BOX) &&
-                   (this[rightBottom] == Solver.Sokoban.WALL || this[rightBottom] == Solver.Sokoban.BOX);
+            return (right.IsWall || dynamicGraph[right.Position].HoldsBox) &&
+                   (bottom.IsWall || dynamicGraph[bottom.Position].HoldsBox) &&
+                   (rightBottom.IsWall || dynamicGraph[rightBottom.Position].HoldsBox);
         }
 
         #endregion
@@ -451,21 +492,36 @@ namespace Sokoban.Network
             }
         }
 
+        private bool CanHoldKeeper(int pos)
+        {
+            if (staticGraph[pos].IsWall ||
+                dynamicGraph[pos].HoldsBox)
+            {
+                return false;
+            }
+
+            return true;
+        }
+
         private bool CanMoveKeeper(Key key)
         {
-            var targetPos = GetPosition(key, keeperPosition);
+            var targetKeeperPos = GetPosition(key, keeperPosition);
 
-            CellDynamicInfo keeperDynCellInfo, targetDynCellInfo;
+            CellDynamicInfo keeperDynCellInfo, targetKeeperDynCellInfo;
             if (dynamicGraph.TryGetValue(keeperPosition, out keeperDynCellInfo) &&
-                dynamicGraph.TryGetValue(targetPos.Value, out targetDynCellInfo))
+                dynamicGraph.TryGetValue(targetKeeperPos.Value, out targetKeeperDynCellInfo))
             {
-                if (targetDynCellInfo.CanHoldKeeper)
+                if (CanHoldKeeper(targetKeeperPos.Value))
                 {
                     return true;
                 }
-                else if (targetDynCellInfo.HoldsBox)
+                else if (targetKeeperDynCellInfo.HoldsBox)
                 {
-
+                    int? targetBoxPos;
+                    if (CanMoveBox(key, targetKeeperPos.Value, out targetBoxPos))
+                    {
+                        return true;
+                    }
                 }
             }
 
@@ -474,24 +530,40 @@ namespace Sokoban.Network
 
         private void MoveKeeper(Key key)
         {
-            var targetPos = GetPosition(key, keeperPosition);
+            var targetKeeperPos = GetPosition(key, keeperPosition);
 
-            CellDynamicInfo keeperDynCellInfo, targetDynCellInfo;
+            CellDynamicInfo keeperDynCellInfo, targetKeeperDynCellInfo;
             if (dynamicGraph.TryGetValue(keeperPosition, out keeperDynCellInfo) &&
-                dynamicGraph.TryGetValue(targetPos.Value, out targetDynCellInfo))
+                dynamicGraph.TryGetValue(targetKeeperPos.Value, out targetKeeperDynCellInfo))
             {
-                if (targetDynCellInfo.CanHoldKeeper)
+                if (CanHoldKeeper(targetKeeperPos.Value))
                 {
                     keeperDynCellInfo.HoldsKeeper = false;
-                    targetDynCellInfo.HoldsKeeper = true;
+                    targetKeeperDynCellInfo.HoldsKeeper = true;
 
-                    keeperPosition = targetPos.Value;
-
+                    keeperPosition = targetKeeperPos.Value;
                     DetectAreas();
                 }
-                else if (targetDynCellInfo.HoldsBox)
+                else if (targetKeeperDynCellInfo.HoldsBox)
                 {
+                    var targetBoxPos = GetPosition(key, targetKeeperPos);
 
+                    CellDynamicInfo targetBoxDynCellInfo;
+                    if (targetBoxPos.HasValue &&
+                        dynamicGraph.TryGetValue(targetBoxPos.Value, out targetBoxDynCellInfo))
+                    {
+                        dynamicGraph[targetBoxPos.Value].HoldsBox = true;
+                        dynamicGraph[targetBoxPos.Value].HoldsKeeper = false;
+                        dynamicGraph[targetBoxPos.Value].StepsToKeeper = -1;
+
+                        targetKeeperDynCellInfo.HoldsBox = false;
+                        targetKeeperDynCellInfo.HoldsKeeper = true;
+
+                        keeperDynCellInfo.HoldsKeeper = false;
+
+                        keeperPosition = targetKeeperPos.Value;
+                        DetectAreas();
+                    }
                 }
             }
         }

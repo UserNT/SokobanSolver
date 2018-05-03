@@ -4,10 +4,6 @@
     {
         public int AreaId { get; set; }
 
-        public bool CanHoldKeeper { get; set; }
-
-        public bool CanHoldBox { get; set; }
-
         public bool HoldsKeeper { get; set; }
 
         public bool HoldsBox { get; set; }
