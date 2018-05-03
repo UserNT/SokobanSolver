@@ -56,14 +56,14 @@ namespace Sokoban.Network
                     else if (cell.IsLocation)
                     {
                         if (dynCellInfo.HoldsBox) return Solver.Sokoban.BOX_ON_LOCATION;
-                        if (dynCellInfo.HoldsKeeper) return Solver.Sokoban.KEEPER_ON_LOCATION;
+                        if (cell.Position == keeperPosition) return Solver.Sokoban.KEEPER_ON_LOCATION;
                         return Solver.Sokoban.LOCATION;
                     }
                     else if (dynCellInfo.HoldsBox)
                     {
                         return Solver.Sokoban.BOX;
                     }
-                    else if (dynCellInfo.HoldsKeeper)
+                    else if (cell.Position == keeperPosition)
                     {
                         return Solver.Sokoban.KEEPER;
                     }
@@ -127,10 +127,8 @@ namespace Sokoban.Network
             cell.HoldsBox = map[pos] == Solver.Sokoban.BOX ||
                             map[pos] == Solver.Sokoban.BOX_ON_LOCATION;
 
-            cell.HoldsKeeper = map[pos] == Solver.Sokoban.KEEPER ||
-                               map[pos] == Solver.Sokoban.KEEPER_ON_LOCATION;
-
-            if (cell.HoldsKeeper)
+            if (map[pos] == Solver.Sokoban.KEEPER ||
+                map[pos] == Solver.Sokoban.KEEPER_ON_LOCATION)
             {
                 keeperPosition = pos;
             }
@@ -538,9 +536,6 @@ namespace Sokoban.Network
             {
                 if (CanHoldKeeper(targetKeeperPos.Value))
                 {
-                    keeperDynCellInfo.HoldsKeeper = false;
-                    targetKeeperDynCellInfo.HoldsKeeper = true;
-
                     keeperPosition = targetKeeperPos.Value;
                     DetectAreas();
                 }
@@ -553,13 +548,9 @@ namespace Sokoban.Network
                         dynamicGraph.TryGetValue(targetBoxPos.Value, out targetBoxDynCellInfo))
                     {
                         dynamicGraph[targetBoxPos.Value].HoldsBox = true;
-                        dynamicGraph[targetBoxPos.Value].HoldsKeeper = false;
                         dynamicGraph[targetBoxPos.Value].StepsToKeeper = -1;
 
                         targetKeeperDynCellInfo.HoldsBox = false;
-                        targetKeeperDynCellInfo.HoldsKeeper = true;
-
-                        keeperDynCellInfo.HoldsKeeper = false;
 
                         keeperPosition = targetKeeperPos.Value;
                         DetectAreas();
