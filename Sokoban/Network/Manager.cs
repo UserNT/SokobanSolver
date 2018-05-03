@@ -327,14 +327,56 @@ namespace Sokoban.Network
 
         private void SortLocations()
         {
+            var backupBoxPositions = dynamicGraph.Where(x => x.Value.HoldsBox)
+                                                 .Select(x => x.Key)
+                                                 .ToList();
+            var backupKeeperPosition = KeeperPosition;
+
             var entryPoints = staticGraph.Where(pair => pair.Value.IsLocation)
                                          .SelectMany(pair => GetEntryPoints(pair.Value))
                                          .ToList();
 
             foreach (var ep in entryPoints)
             {
+                SimulateSingleBoxPosition(ep);
+
 
             }
+
+            RecoverFromBackup(backupBoxPositions, backupKeeperPosition);
+        }
+
+        private void RecoverFromBackup(List<int> backupBoxPositions, int backupKeeperPosition)
+        {
+            foreach (var cellInfo in dynamicGraph.Values.Where(x => x.HoldsBox))
+            {
+                cellInfo.HoldsBox = false;
+            }
+
+            foreach (var boxPosition in backupBoxPositions)
+            {
+                dynamicGraph[boxPosition].HoldsBox = true;
+            }
+
+            KeeperPosition = backupKeeperPosition;
+
+            DetectAreas();
+        }
+
+        private void SimulateSingleBoxPosition(SokobanPathItem ep)
+        {
+            // simulate single box position
+            foreach (var box in dynamicGraph.Values.Where(x => x.HoldsBox))
+            {
+                box.HoldsBox = false;
+            }
+            dynamicGraph[ep.Position].HoldsBox = true;
+            dynamicGraph[ep.Position].StepsToKeeper = StepsToInaccessibleKeeper;
+
+            // simulate keeper position to push box on location
+            KeeperPosition = GetPosition(GetOppositeKey(ep.Key), ep.Position).Value;
+
+            DetectAreas();
         }
 
         private IEnumerable<SokobanPathItem> GetEntryPoints(CellStaticInfo locationCell)
@@ -363,6 +405,14 @@ namespace Sokoban.Network
         #endregion
 
         #region GetPosition
+
+        public Key GetOppositeKey(Key key)
+        {
+            return key == Key.Up ? Key.Down :
+                   key == Key.Down ? Key.Up :
+                   key == Key.Left ? Key.Right :
+                   Key.Left;
+        }
 
         public int? GetPosition(int column, int row)
         {
