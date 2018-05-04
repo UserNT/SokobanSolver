@@ -154,11 +154,14 @@ namespace Sokoban.Network
 
         private void DrawLocationsOrder(int? pos, Border border)
         {
-            Tuple<int, int> order;
-            if (Manager.StaticGraph[pos.Value].IsLocation && Manager.SortedLocations.TryGetValue(pos.Value, out order))
+            if (Manager.StaticGraph[pos.Value].IsLocation)
             {
-                var text = string.Format("{0}/{1}", order.Item1, order.Item2);
-                ZoomeTextIntoBorder(border, text);
+                var step = Manager.LocationsOrder.FirstOrDefault(x => x.Contains(pos.Value));
+                if (step != null)
+                {
+                    var text = Manager.LocationsOrder.IndexOf(step).ToString();
+                    ZoomeTextIntoBorder(border, text);
+                }
             }
         }
 

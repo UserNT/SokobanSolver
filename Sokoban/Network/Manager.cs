@@ -17,7 +17,7 @@ namespace Sokoban.Network
         private readonly Dictionary<int, CellDynamicInfo> dynamicGraph = new Dictionary<int, CellDynamicInfo>();
         private readonly Dictionary<int, Area> areaGraph = new Dictionary<int, Area>();
 
-        private readonly Dictionary<int, Tuple<int, int>> sortedLocations = new Dictionary<int, Tuple<int, int>>();
+        private readonly List<IEnumerable<int>> locationsOrder = new List<IEnumerable<int>>();
 
         private Manager(int width, int height, string map)
         {
@@ -81,7 +81,7 @@ namespace Sokoban.Network
 
         public IReadOnlyDictionary<int, Area> AreaGraph => areaGraph;
 
-        public Dictionary<int, Tuple<int, int>> SortedLocations => sortedLocations;
+        public List<IEnumerable<int>> LocationsOrder => locationsOrder;
 
         public int KeeperPosition { get; private set; }
 
@@ -332,7 +332,8 @@ namespace Sokoban.Network
 
         private void SortLocations()
         {
-            SortedLocations.Clear();
+            LocationsOrder.Clear();
+            var SortedLocations = new Dictionary<int, Tuple<int, int>>();
 
             var backupBoxPositions = dynamicGraph.Where(x => x.Value.HoldsBox)
                                                  .Select(x => x.Key)
@@ -344,7 +345,7 @@ namespace Sokoban.Network
             var entryPoints = staticGraph.Where(pair => pair.Value.IsLocation)
                                          .SelectMany(pair => GetEntryPoints(pair.Value))
                                          .ToList();
-            entryPoints.Reverse();
+
             foreach (var ep in entryPoints)
             {
                 var scope = new Queue<Tuple<Key, int, int>>();
@@ -364,6 +365,7 @@ namespace Sokoban.Network
                     int? targetBoxPosition;
                     while (CanMoveBox(key, boxPosition, out targetBoxPosition))
                     {
+                        currentRound++;
                         MoveKeeper(key);
 
                         Tuple<int, int> alreadyEstimated;
@@ -413,6 +415,9 @@ namespace Sokoban.Network
                     break;
                 }
             }
+
+            var ordered = SortedLocations.GroupBy(pair => pair.Value).OrderByDescending(g => g.Key.Item1).ThenByDescending(g => g.Key.Item2).Select(g => g.Select(x => x.Key)).ToList();
+            locationsOrder.AddRange(ordered);
 
             //RecoverFromBackup(backupBoxPositions, backupKeeperPosition);
         }
