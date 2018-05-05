@@ -2,13 +2,14 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 using System.Windows;
 using System.Windows.Input;
 
 namespace Sokoban.Network
 {
-    public class Manager
+    public class Manager : INotifyPropertyChanged
     {
         private const int StepsToInaccessibleKeeper = -1;
         private readonly Dictionary<int, CellStaticInfo> staticGraph = new Dictionary<int, CellStaticInfo>();
@@ -19,6 +20,12 @@ namespace Sokoban.Network
 
         private readonly List<IEnumerable<int>> locationsOrder = new List<IEnumerable<int>>();
 
+        private bool showBoxes = true;
+        private Dictionary<int, CellDynamicInfo> hiddenGraph = new Dictionary<int, CellDynamicInfo>();
+        private int hiddenKeperPosition;
+
+        public event PropertyChangedEventHandler PropertyChanged;
+
         private Manager(int width, int height, string map)
         {
             this.Width = width;
@@ -28,7 +35,7 @@ namespace Sokoban.Network
             InitializeGraphs();
             DetectAreas();
             FilterOutsiders();
-            SortLocations();
+            //SortLocations();
         }
 
         #region Properties
@@ -330,97 +337,240 @@ namespace Sokoban.Network
 
         #region Sort Locations
 
-        private void SortLocations()
-        {
-            LocationsOrder.Clear();
-            var SortedLocations = new Dictionary<int, Tuple<int, int>>();
+        //private void SortLocations()
+        //{
+        //    LocationsOrder.Clear();
+        //    var SortedLocations = new Dictionary<int, Tuple<int, int>>();
 
-            var backupBoxPositions = dynamicGraph.Where(x => x.Value.HoldsBox)
-                                                 .Select(x => x.Key)
-                                                 .ToList();
-            var backupKeeperPosition = KeeperPosition;
+        //    var backupBoxPositions = dynamicGraph.Where(x => x.Value.HoldsBox)
+        //                                         .Select(x => x.Key)
+        //                                         .ToList();
+        //    var backupKeeperPosition = KeeperPosition;
 
-            var locationsCount = staticGraph.Where(pair => pair.Value.IsLocation).Count();
+        //    var locations = staticGraph.Where(pair => pair.Value.IsLocation).ToDictionary(pair => pair.Key);
+        //    var locationsCount = locations.Count();
 
-            var entryPoints = staticGraph.Where(pair => pair.Value.IsLocation)
-                                         .SelectMany(pair => GetEntryPoints(pair.Value))
-                                         .ToList();
+        //    var entryPoints = staticGraph.Where(pair => pair.Value.IsLocation)
+        //                                 .SelectMany(pair => GetEntryPoints(pair.Value))
+        //                                 .ToList();
 
-            foreach (var ep in entryPoints)
-            {
-                var scope = new Queue<Tuple<Key, int, int>>();
-                scope.Enqueue(new Tuple<Key, int, int>(ep.Key, ep.Position, 1));
+        //    var scope = new Queue<Tuple<Key, int, int>>();
 
-                while (scope.Count > 0)
-                {
-                    var task = scope.Dequeue();
+        //    foreach (var ep in entryPoints)
+        //    {
+        //        scope.Enqueue(new Tuple<Key, int, int>(ep.Key, ep.Position, 1));
+        //    }
 
-                    Key key = task.Item1;
-                    int boxPosition = task.Item2;
-                    int currentRound = task.Item3;
-                    int currentStep = 1;
+        //    while (scope.Count > 0)
+        //    {
+        //        var task = scope.Dequeue();
 
-                    SimulateSingleBoxPosition(key, boxPosition);
+        //        Key key = task.Item1;
+        //        int boxPosition = task.Item2;
+        //        int currentRound = task.Item3;
+        //        int currentStep = 1;
 
-                    int? targetBoxPosition;
-                    while (CanMoveBox(key, boxPosition, out targetBoxPosition))
-                    {
-                        currentRound++;
-                        MoveKeeper(key);
+        //        SimulateSingleBoxPosition(key, boxPosition);
 
-                        Tuple<int, int> alreadyEstimated;
-                        if (SortedLocations.TryGetValue(targetBoxPosition.Value, out alreadyEstimated))
-                        {
-                            //if (alreadyEstimated.Item1 > currentRound || alreadyEstimated.Item2 > currentStep)
-                            //{
-                            //    SortedLocations[targetBoxPosition.Value] = new Tuple<int, int>(currentRound, currentStep);
-                            //}
-                            //else
-                            {
-                                continue;
-                            }
-                        }
-                        else
-                        {
-                            SortedLocations.Add(targetBoxPosition.Value, new Tuple<int, int>(currentRound, currentStep));
-                        }
+        //        int? targetBoxPosition;
+        //        while (CanMoveBox(key, boxPosition, out targetBoxPosition) && locations.ContainsKey(targetBoxPosition.Value))
+        //        {
+        //            currentRound++;
+        //            MoveKeeper(key);
 
-                        var keeperAreaId = dynamicGraph[KeeperPosition].AreaId;
+        //            locations.Remove(targetBoxPosition.Value);
+        //            SortedLocations.Add(targetBoxPosition.Value, new Tuple<int, int>(currentRound, currentStep));
 
-                        var key1 = GetNextClockwiseKey(key);
-                        var expectedKeeperPosition = GetPosition(GetOppositeKey(key1), targetBoxPosition).Value;
+        //            var keeperAreaId = dynamicGraph[KeeperPosition].AreaId;
 
-                        if (areaGraph[keeperAreaId].Contains(expectedKeeperPosition))
-                        {
-                            scope.Enqueue(new Tuple<Key, int, int>(key1, targetBoxPosition.Value, currentRound + 1));
-                        }
+        //            var key1 = GetNextClockwiseKey(key);
+        //            var expectedKeeperPosition = GetPosition(GetOppositeKey(key1), targetBoxPosition).Value;
 
-                        var key2 = GetNextConterClockwiseKey(key);
-                        expectedKeeperPosition = GetPosition(GetOppositeKey(key2), targetBoxPosition).Value;
+        //            if (areaGraph[keeperAreaId].Contains(expectedKeeperPosition))
+        //            {
+        //                scope.Enqueue(new Tuple<Key, int, int>(key1, targetBoxPosition.Value, currentRound + 1));
+        //            }
 
-                        if (areaGraph[keeperAreaId].Contains(expectedKeeperPosition))
-                        {
-                            scope.Enqueue(new Tuple<Key, int, int>(key2, targetBoxPosition.Value, currentRound + 1));
-                        }
+        //            var key2 = GetNextConterClockwiseKey(key);
+        //            expectedKeeperPosition = GetPosition(GetOppositeKey(key2), targetBoxPosition).Value;
 
-                        boxPosition = targetBoxPosition.Value;
-                        currentStep++;
-                    }
-                }
+        //            if (areaGraph[keeperAreaId].Contains(expectedKeeperPosition))
+        //            {
+        //                scope.Enqueue(new Tuple<Key, int, int>(key2, targetBoxPosition.Value, currentRound + 1));
+        //            }
 
-                SimulateSingleBoxPosition(ep.Key, ep.Position);
+        //            boxPosition = targetBoxPosition.Value;
+        //            currentStep++;
+        //        }
+        //    }
 
-                if (SortedLocations.Count >= locationsCount)
-                {
-                    break;
-                }
-            }
+        //    //foreach (var ep in entryPoints)
+        //    //{
+        //    //    var scope = new Queue<Tuple<Key, int, int>>();
+        //    //    scope.Enqueue(new Tuple<Key, int, int>(ep.Key, ep.Position, 1));
 
-            var ordered = SortedLocations.GroupBy(pair => pair.Value).OrderByDescending(g => g.Key.Item1).ThenByDescending(g => g.Key.Item2).Select(g => g.Select(x => x.Key)).ToList();
-            locationsOrder.AddRange(ordered);
+        //    //    while (scope.Count > 0)
+        //    //    {
+        //    //        var task = scope.Dequeue();
 
-            //RecoverFromBackup(backupBoxPositions, backupKeeperPosition);
-        }
+        //    //        Key key = task.Item1;
+        //    //        int boxPosition = task.Item2;
+        //    //        int currentRound = task.Item3;
+        //    //        int currentStep = 1;
+
+        //    //        SimulateSingleBoxPosition(key, boxPosition);
+
+        //    //        int? targetBoxPosition;
+        //    //        while (CanMoveBox(key, boxPosition, out targetBoxPosition))
+        //    //        {
+        //    //            currentRound++;
+        //    //            MoveKeeper(key);
+
+        //    //            Tuple<int, int> alreadyEstimated;
+        //    //            if (SortedLocations.TryGetValue(targetBoxPosition.Value, out alreadyEstimated))
+        //    //            {
+        //    //                //if (alreadyEstimated.Item1 > currentRound || alreadyEstimated.Item2 > currentStep)
+        //    //                //{
+        //    //                //    SortedLocations[targetBoxPosition.Value] = new Tuple<int, int>(currentRound, currentStep);
+        //    //                //}
+        //    //                //else
+        //    //                {
+        //    //                    continue;
+        //    //                }
+        //    //            }
+        //    //            else
+        //    //            {
+        //    //                SortedLocations.Add(targetBoxPosition.Value, new Tuple<int, int>(currentRound, currentStep));
+        //    //            }
+
+        //    //            var keeperAreaId = dynamicGraph[KeeperPosition].AreaId;
+
+        //    //            var key1 = GetNextClockwiseKey(key);
+        //    //            var expectedKeeperPosition = GetPosition(GetOppositeKey(key1), targetBoxPosition).Value;
+
+        //    //            if (areaGraph[keeperAreaId].Contains(expectedKeeperPosition))
+        //    //            {
+        //    //                scope.Enqueue(new Tuple<Key, int, int>(key1, targetBoxPosition.Value, currentRound + 1));
+        //    //            }
+
+        //    //            var key2 = GetNextConterClockwiseKey(key);
+        //    //            expectedKeeperPosition = GetPosition(GetOppositeKey(key2), targetBoxPosition).Value;
+
+        //    //            if (areaGraph[keeperAreaId].Contains(expectedKeeperPosition))
+        //    //            {
+        //    //                scope.Enqueue(new Tuple<Key, int, int>(key2, targetBoxPosition.Value, currentRound + 1));
+        //    //            }
+
+        //    //            boxPosition = targetBoxPosition.Value;
+        //    //            currentStep++;
+        //    //        }
+        //    //    }
+
+        //    //    SimulateSingleBoxPosition(ep.Key, ep.Position);
+
+        //    //    if (SortedLocations.Count >= locationsCount)
+        //    //    {
+        //    //        break;
+        //    //    }
+        //    //}
+
+        //    var ordered = SortedLocations.GroupBy(pair => pair.Value).OrderByDescending(g => g.Key.Item1).ThenByDescending(g => g.Key.Item2).Select(g => g.Select(x => x.Key)).ToList();
+        //    locationsOrder.AddRange(ordered);
+
+        //    RecoverFromBackup(backupBoxPositions, backupKeeperPosition);
+        //}
+
+        //private void SortLocations()
+        //{
+        //    LocationsOrder.Clear();
+        //    var SortedLocations = new Dictionary<int, Tuple<int, int>>();
+
+        //    var backupBoxPositions = dynamicGraph.Where(x => x.Value.HoldsBox)
+        //                                         .Select(x => x.Key)
+        //                                         .ToList();
+        //    var backupKeeperPosition = KeeperPosition;
+
+        //    var locationsCount = staticGraph.Where(pair => pair.Value.IsLocation).Count();
+
+        //    var entryPoints = staticGraph.Where(pair => pair.Value.IsLocation)
+        //                                 .SelectMany(pair => GetEntryPoints(pair.Value))
+        //                                 .ToList();
+
+        //    foreach (var ep in entryPoints)
+        //    {
+        //        var scope = new Queue<Tuple<Key, int, int>>();
+        //        scope.Enqueue(new Tuple<Key, int, int>(ep.Key, ep.Position, 1));
+
+        //        while (scope.Count > 0)
+        //        {
+        //            var task = scope.Dequeue();
+
+        //            Key key = task.Item1;
+        //            int boxPosition = task.Item2;
+        //            int currentRound = task.Item3;
+        //            int currentStep = 1;
+
+        //            SimulateSingleBoxPosition(key, boxPosition);
+
+        //            int? targetBoxPosition;
+        //            while (CanMoveBox(key, boxPosition, out targetBoxPosition))
+        //            {
+        //                currentRound++;
+        //                MoveKeeper(key);
+
+        //                Tuple<int, int> alreadyEstimated;
+        //                if (SortedLocations.TryGetValue(targetBoxPosition.Value, out alreadyEstimated))
+        //                {
+        //                    //if (alreadyEstimated.Item1 > currentRound || alreadyEstimated.Item2 > currentStep)
+        //                    //{
+        //                    //    SortedLocations[targetBoxPosition.Value] = new Tuple<int, int>(currentRound, currentStep);
+        //                    //}
+        //                    //else
+        //                    {
+        //                        continue;
+        //                    }
+        //                }
+        //                else
+        //                {
+        //                    SortedLocations.Add(targetBoxPosition.Value, new Tuple<int, int>(currentRound, currentStep));
+        //                }
+
+        //                var keeperAreaId = dynamicGraph[KeeperPosition].AreaId;
+
+        //                var key1 = GetNextClockwiseKey(key);
+        //                var expectedKeeperPosition = GetPosition(GetOppositeKey(key1), targetBoxPosition).Value;
+
+        //                if (areaGraph[keeperAreaId].Contains(expectedKeeperPosition))
+        //                {
+        //                    scope.Enqueue(new Tuple<Key, int, int>(key1, targetBoxPosition.Value, currentRound + 1));
+        //                }
+
+        //                var key2 = GetNextConterClockwiseKey(key);
+        //                expectedKeeperPosition = GetPosition(GetOppositeKey(key2), targetBoxPosition).Value;
+
+        //                if (areaGraph[keeperAreaId].Contains(expectedKeeperPosition))
+        //                {
+        //                    scope.Enqueue(new Tuple<Key, int, int>(key2, targetBoxPosition.Value, currentRound + 1));
+        //                }
+
+        //                boxPosition = targetBoxPosition.Value;
+        //                currentStep++;
+        //            }
+        //        }
+
+        //        SimulateSingleBoxPosition(ep.Key, ep.Position);
+
+        //        if (SortedLocations.Count >= locationsCount)
+        //        {
+        //            break;
+        //        }
+        //    }
+
+        //    var ordered = SortedLocations.GroupBy(pair => pair.Value).OrderByDescending(g => g.Key.Item1).ThenByDescending(g => g.Key.Item2).Select(g => g.Select(x => x.Key)).ToList();
+        //    locationsOrder.AddRange(ordered);
+
+        //    //RecoverFromBackup(backupBoxPositions, backupKeeperPosition);
+        //}
 
         private void RecoverFromBackup(List<int> backupBoxPositions, int backupKeeperPosition)
         {
@@ -743,6 +893,66 @@ namespace Sokoban.Network
         }
 
         #endregion
+
+        public void ShowHideBoxes()
+        {
+            showBoxes = !showBoxes;
+
+            if (showBoxes)
+            {
+                ShowBoxes();
+            }
+            else
+            {
+                HideBoxes();
+            }
+
+            DetectAreas();
+            RaisePropertyChanged("BoxVisibility");
+        }
+
+        protected virtual void RaisePropertyChanged(string propertyName)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
+
+        private void HideBoxes()
+        {
+            hiddenGraph = new Dictionary<int, CellDynamicInfo>();
+
+            foreach (var dynCellInfo in dynamicGraph)
+            {
+                hiddenGraph.Add(dynCellInfo.Key, new CellDynamicInfo()
+                {
+                    AreaId = dynCellInfo.Value.AreaId,
+                    HoldsBox = dynCellInfo.Value.HoldsBox,
+                    StepsToKeeper = dynCellInfo.Value.StepsToKeeper
+                });
+
+                dynCellInfo.Value.HoldsBox = false;
+            }
+
+            hiddenKeperPosition = KeeperPosition;
+        }
+
+        private void ShowBoxes()
+        {
+            dynamicGraph.Clear();
+
+            foreach (var dynCellInfo in hiddenGraph)
+            {
+                dynamicGraph[dynCellInfo.Key] = new CellDynamicInfo()
+                {
+                    AreaId = dynCellInfo.Value.AreaId,
+                    HoldsBox = dynCellInfo.Value.HoldsBox,
+                    StepsToKeeper = dynCellInfo.Value.StepsToKeeper
+                };
+            }
+
+            KeeperPosition = hiddenKeperPosition;
+
+            hiddenGraph.Clear();
+        }
 
         #region Using
 

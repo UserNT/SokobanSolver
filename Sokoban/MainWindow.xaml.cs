@@ -81,7 +81,13 @@ namespace Sokoban
             }
         }
 
-        private string[] levels = new[] { Solver.Sokoban.Level1Data, Solver.Sokoban.Level2Data, Solver.Sokoban.Level10Data, Solver.Sokoban.Level22Data, Solver.Sokoban.Level27Data };
+        private string[] levels = new[] { Solver.Sokoban.Level1Data,
+                                          Solver.Sokoban.Level2Data,
+                                          Solver.Sokoban.Level10Data,
+                                          Solver.Sokoban.Level13Data,
+                                          Solver.Sokoban.Level22Data,
+                                          Solver.Sokoban.Level27Data,
+                                          Solver.Sokoban.Level39Data};
         private int currentLevel = 0;
 
         private void OnNextButton_Click(object sender, RoutedEventArgs e)
@@ -92,6 +98,14 @@ namespace Sokoban
                 currentLevel = 0;
             }
             managerControl.Manager = Network.Manager.Using(levels[currentLevel]);
+        }
+
+        private void OnShowHideButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (managerControl.Manager != null)
+            {
+                managerControl.Manager.ShowHideBoxes();
+            }
         }
 
         private async void OnStartButton_Click(object sender, RoutedEventArgs e)
@@ -107,7 +121,7 @@ namespace Sokoban
             //managerControl.Manager = Network.Manager.Using(Solver.Sokoban.Level10Data);
             managerControl.Manager = Network.Manager.Using(levels[currentLevel]);
 
-            //var response = await Load(cookies.Text, 22);
+            //var response = await Load(cookies.Text, 39);
             //var responseData = JsonConvert.DeserializeObject<Response>(response);
 
 

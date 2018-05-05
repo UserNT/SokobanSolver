@@ -18,12 +18,14 @@
             <RowDefinition />
         </Grid.RowDefinitions>
         <TextBlock Text="Cookies:" Grid.Column="0" />
-        <TextBox x:Name="cookies" Text="lang=ru; sessionId=8542431285abe614fc9a867.02357227; userId=48971567; _ga=GA1.3.703182094.1522426113; _gid=GA1.3.638946989.1522426113; userName=UserNT; sig=7b933b835b7ef8ee6cd2d797d9317cf4cf7bc1b538686ebeb5c33fd1a8e2ffcb; showLoginFormFirst=1; _userId=undefined; _ym_uid=1522607063327570456" Grid.Column="1" />
+        <TextBox x:Name="cookies" Text="lang=ru; sessionId=8542431285abe614fc9a867.02357227; userId=48971567; _ga=GA1.3.703182094.1522426113; userName=UserNT; sig=7b933b835b7ef8ee6cd2d797d9317cf4cf7bc1b538686ebeb5c33fd1a8e2ffcb; showLoginFormFirst=1; _userId=undefined; _ym_uid=1522607063327570456; _gid=GA1.3.531731419.1525412380" Grid.Column="1" />
 
         <TextBlock x:Name="status" Grid.Column="1" Grid.Row="1" />
         <Button Content="Start" Click="OnStartButton_Click" Grid.Row="1" />
-
-        <Button Content="Next Level" Click="OnNextButton_Click" HorizontalAlignment="Left" Grid.Column="1" Grid.Row="1" />
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Grid.Column="1" Grid.Row="1">
+            <Button Content="Next Level" Click="OnNextButton_Click" />
+            <Button Content="Show/Hide boxes" Click="OnShowHideButton_Click"  />
+        </StackPanel>
 
         <network:ManagerControl x:Name="managerControl" Grid.Column="1" Grid.Row="2">
             <network:ManagerControl.Template>

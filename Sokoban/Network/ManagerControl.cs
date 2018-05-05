@@ -28,7 +28,7 @@ namespace Sokoban.Network
         private static void OnManagerPropertyChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
             var ctrl = d as ManagerControl;
-            ctrl?.OnManagerPropertyChanged();
+            ctrl?.OnManagerPropertyChanged(e.OldValue as Manager);
         }
 
         public ManagerControl()
@@ -74,8 +74,13 @@ namespace Sokoban.Network
             }
         }
 
-        private void OnManagerPropertyChanged()
+        private void OnManagerPropertyChanged(Manager oldManager)
         {
+            if (oldManager != null)
+            {
+                oldManager.PropertyChanged -= Manager_PropertyChanged;
+            }
+
             rootGrid.Children.Clear();
             rootGrid.RowDefinitions.Clear();
             rootGrid.ColumnDefinitions.Clear();
@@ -84,6 +89,8 @@ namespace Sokoban.Network
             {
                 return;
             }
+
+            Manager.PropertyChanged += Manager_PropertyChanged;
 
             if (rootGrid.ColumnDefinitions.Count == 0)
             {
@@ -101,6 +108,11 @@ namespace Sokoban.Network
                 }
             }
 
+            DrawElements();
+        }
+
+        private void Manager_PropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
+        {
             DrawElements();
         }
 
@@ -154,15 +166,15 @@ namespace Sokoban.Network
 
         private void DrawLocationsOrder(int? pos, Border border)
         {
-            if (Manager.StaticGraph[pos.Value].IsLocation)
-            {
+            //if (Manager.StaticGraph[pos.Value].IsLocation)
+            //{
                 var step = Manager.LocationsOrder.FirstOrDefault(x => x.Contains(pos.Value));
                 if (step != null)
                 {
                     var text = Manager.LocationsOrder.IndexOf(step).ToString();
                     ZoomeTextIntoBorder(border, text);
                 }
-            }
+            //}
         }
 
         private static void ZoomeTextIntoBorder(Border border, string text)
