@@ -20,7 +20,7 @@ namespace Sokoban.Tests
         [TestMethod]
         public void Ctor_ShouldInitializeStaticGraph()
         {
-            var manager = Manager.Using(Sokoban.Solver.Sokoban.Level1Data);
+            var manager = Manager.Using(Sokoban.Solver.Sokoban.Level1);
         }
     }
 }

@@ -23,7 +23,7 @@ namespace Sokoban.Tests
         [TestMethod]
         public void TestMethod1()
         {
-            var navigator = Navigator.Using(Solver.Sokoban.Level2Data);
+            var navigator = Navigator.Using(Solver.Sokoban.Level2);
             var locationGroups = Graph.GetLocationGroups(navigator);
 
             var order = Graph.GetFillingOrder(navigator, locationGroups.Values);
@@ -48,7 +48,7 @@ namespace Sokoban.Tests
             var moveKeeperGraph = new Dictionary<int, List<SokobanPathItem>>();
             var moveBoxGraph = new Dictionary<int, List<SokobanPathItem>>();
 
-            var navigator = Navigator.Using(Solver.Sokoban.Level10Data);
+            var navigator = Navigator.Using(Solver.Sokoban.Level10);
             navigator.Foreach(new[] { EMPTY, KEEPER, BOX, LOCATION, BOX_ON_LOCATION, KEEPER_ON_LOCATION }, (position) =>
             {
                 foreach (var key in SupportedKeys)

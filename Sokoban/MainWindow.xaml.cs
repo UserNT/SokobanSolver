@@ -81,13 +81,14 @@ namespace Sokoban
             }
         }
 
-        private string[] levels = new[] { Solver.Sokoban.Level1Data,
-                                          Solver.Sokoban.Level2Data,
-                                          Solver.Sokoban.Level10Data,
-                                          Solver.Sokoban.Level13Data,
-                                          Solver.Sokoban.Level22Data,
-                                          Solver.Sokoban.Level27Data,
-                                          Solver.Sokoban.Level39Data};
+        private string[] levels = new[] { Solver.Sokoban.Level1,
+                                          Solver.Sokoban.Level2,
+                                          Solver.Sokoban.Level10,
+                                          Solver.Sokoban.Level13,
+                                          Solver.Sokoban.Level18,
+                                          Solver.Sokoban.Level22,
+                                          Solver.Sokoban.Level27,
+                                          Solver.Sokoban.Level39};
         private int currentLevel = 0;
 
         private void OnNextButton_Click(object sender, RoutedEventArgs e)
@@ -121,7 +122,7 @@ namespace Sokoban
             //managerControl.Manager = Network.Manager.Using(Solver.Sokoban.Level10Data);
             managerControl.Manager = Network.Manager.Using(levels[currentLevel]);
 
-            //var response = await Load(cookies.Text, 39);
+            //var response = await Load(cookies.Text, 18);
             //var responseData = JsonConvert.DeserializeObject<Response>(response);
 
 
