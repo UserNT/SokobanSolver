@@ -35,7 +35,7 @@ namespace Sokoban.Network
             InitializeGraphs();
             DetectAreas();
             FilterOutsiders();
-            //SortLocations();
+            SortLocations();
         }
 
         #region Properties
@@ -255,6 +255,24 @@ namespace Sokoban.Network
             }
         }
 
+        public void AddRemoveBox(int pos)
+        {
+            if (pos == KeeperPosition)
+            {
+                return;
+            }
+
+            if (!showBoxes)
+            {
+                CellDynamicInfo dynCellInfo;
+                if (dynamicGraph.TryGetValue(pos, out dynCellInfo))
+                {
+                    dynCellInfo.HoldsBox = !dynCellInfo.HoldsBox;
+                    DetectAreas();
+                }
+            }
+        }
+
         private IEnumerable<CellStaticInfo> GetNeighbours(CellStaticInfo cell)
         {
             if (cell.Left != null) yield return cell.Left;
@@ -336,6 +354,11 @@ namespace Sokoban.Network
         #endregion
 
         #region Sort Locations
+
+        private void SortLocations()
+        {
+
+        }
 
         //private void SortLocations()
         //{

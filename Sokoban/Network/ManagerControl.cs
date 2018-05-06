@@ -196,8 +196,13 @@ namespace Sokoban.Network
             if (pos == Manager.KeeperPosition)
             {
                 showStepsToKeeper = !showStepsToKeeper;
-                DrawElements();
             }
+            else
+            {
+                Manager.AddRemoveBox(pos.Value);
+            }
+
+            DrawElements();
         }
 
         private char GetColorIndex(int? pos)
