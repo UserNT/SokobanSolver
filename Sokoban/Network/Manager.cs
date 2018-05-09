@@ -24,8 +24,6 @@ namespace Sokoban.Network
         private Dictionary<int, CellDynamicInfo> hiddenGraph = new Dictionary<int, CellDynamicInfo>();
         private int hiddenKeperPosition;
 
-        public event PropertyChangedEventHandler PropertyChanged;
-
         private Manager(int width, int height, string map)
         {
             this.Width = width;
@@ -37,6 +35,17 @@ namespace Sokoban.Network
             FilterOutsiders();
             SortLocations();
         }
+
+        #region INotifyPropertyChanged
+
+        public event PropertyChangedEventHandler PropertyChanged;
+
+        protected virtual void RaisePropertyChanged(string propertyName)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
+
+        #endregion
 
         #region Properties
 
@@ -917,6 +926,8 @@ namespace Sokoban.Network
 
         #endregion
 
+        #region Show Hide boxes
+
         public void ShowHideBoxes()
         {
             showBoxes = !showBoxes;
@@ -932,11 +943,6 @@ namespace Sokoban.Network
 
             DetectAreas();
             RaisePropertyChanged("BoxVisibility");
-        }
-
-        protected virtual void RaisePropertyChanged(string propertyName)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
 
         private void HideBoxes()
@@ -976,6 +982,8 @@ namespace Sokoban.Network
 
             hiddenGraph.Clear();
         }
+
+        #endregion
 
         #region Using
 
