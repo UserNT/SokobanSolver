@@ -4,6 +4,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
 
@@ -364,9 +365,134 @@ namespace Sokoban.Network
 
         #region Sort Locations
 
-        private void SortLocations()
+        private async void SortLocations()
         {
+            await Task.Delay(1000);
 
+            var backupBoxPositions = dynamicGraph.Where(x => x.Value.HoldsBox)
+                                                 .Select(x => x.Key)
+                                                 .ToList();
+            var backupKeeperPosition = KeeperPosition;
+
+            var locations = staticGraph.Values.Where(x => x.IsLocation)
+                                              .Select(x => x.Position)
+                                              .ToList();
+
+            SimulateBoxPositions(locations);
+
+            foreach (var locationPos in locations)
+            {
+                foreach (var neighbor in new[] { staticGraph[locationPos].Left, staticGraph[locationPos].Top, staticGraph[locationPos].Right, staticGraph[locationPos].Bottom })
+                {
+                    if (neighbor.IsWall || neighbor.IsLocation)
+                    {
+                        continue;
+                    }
+
+                    KeeperPosition = neighbor.Position;
+                    DetectAreas();
+
+                    var targetKeeperCell = GetKeeperDragTarget(neighbor, staticGraph[locationPos]);
+                    if (targetKeeperCell == null || targetKeeperCell.IsWall || dynamicGraph[targetKeeperCell.Position].HoldsBox)
+                    {
+                        continue;
+                    }
+
+                    // keeper can make drag here
+                    RaisePropertyChanged("Any");
+                    await Task.Delay(1000);
+
+                    SimulateBoxPositions(locations);
+
+                    KeeperPosition = neighbor.Position;
+                    DetectAreas();
+                }
+            }
+
+            RecoverFromBackup(backupBoxPositions, backupKeeperPosition);
+            RaisePropertyChanged("Any");
+        }
+
+        //private void BuildDragGraph(int dragBoxFrom, int dragBoxTo)
+        //{
+        //    var finalPathes = new List<Stack<Tuple<CellStaticInfo, CellStaticInfo>>>();
+
+        //    var currentPos = new Tuple<CellStaticInfo, CellStaticInfo>(staticGraph[KeeperPosition], staticGraph[dragBoxFrom]);
+
+        //    // visited Tuple<KeeperPos, BoxPos>
+        //    var visited = new HashSet<Tuple<CellStaticInfo, CellStaticInfo>>();
+        //    visited.Add(currentPos);
+
+        //    var scope = new Queue<Tuple<CellStaticInfo, CellStaticInfo>>();
+        //    scope.Enqueue(currentPos);
+
+        //    var currentPath = new Stack<Tuple<CellStaticInfo, CellStaticInfo>>();
+        //    currentPath.Push(currentPos);
+
+        //    var pathes = new Queue<Stack<Tuple<CellStaticInfo, CellStaticInfo>>>();
+        //    pathes.Enqueue(currentPath);
+
+        //    do
+        //    {
+        //        currentPos = scope.Dequeue();
+        //        currentPath = pathes.Dequeue();
+
+        //        var currentKeeperPos = currentPos.Item1;
+        //        var currentBoxPos = currentPos.Item2;
+
+        //        // teleport box to currentBoxPos and keeper to currentKeeperPos
+        //        dynamicGraph[dragBoxFrom].HoldsBox = false;
+        //        dynamicGraph[currentBoxPos.Position].HoldsBox = true;
+        //        KeeperPosition = currentKeeperPos.Position;
+
+        //        if (currentBoxPos.Position == dragBoxTo)
+        //        {
+        //            // found new path
+        //            finalPathes.Add(currentPath);
+        //            continue;
+        //        }
+
+        //        var targetKeeperCell = GetKeeperDragTarget(currentKeeperPos, currentBoxPos);
+        //        if (targetKeeperCell == null || targetKeeperCell.IsWall)
+        //        {
+        //            continue;
+        //        }
+
+        //        // Move box
+        //        dynamicGraph[currentBoxPos.Position].HoldsBox = false;
+        //        dynamicGraph[currentKeeperPos.Position].HoldsBox = true;
+        //        KeeperPosition = targetKeeperCell.Position;
+        //        DetectAreas();
+
+        //        var keeperArea = areaGraph[dynamicGraph[KeeperPosition].AreaId];
+        //        foreach (var neighbor in new[] { currentKeeperPos.Left, currentKeeperPos.Top, currentKeeperPos.Right, currentKeeperPos.Bottom })
+        //        {
+        //            if (keeperArea.Contains(neighbor.Position))
+        //            {
+        //                var nextPosition = new Tuple<CellStaticInfo, CellStaticInfo>(neighbor, currentKeeperPos);
+        //                if (!visited.Contains(nextPosition))
+        //                {
+        //                    visited.Add(nextPosition);
+        //                    scope.Enqueue(nextPosition);
+
+        //                    var nextPath = new Stack<Tuple<CellStaticInfo, CellStaticInfo>>(currentPath.Reverse());
+        //                    nextPath.Push(nextPosition);
+        //                    pathes.Enqueue(nextPath);
+        //                }
+        //            }
+        //        }
+        //    }
+        //    while (scope.Count > 0);
+        //}
+
+        private CellStaticInfo GetKeeperDragTarget(CellStaticInfo keeperPos, CellStaticInfo boxPos)
+        {
+            if (boxPos.Left == keeperPos) return keeperPos.Left;
+            if (boxPos.Top == keeperPos) return keeperPos.Top;
+            if (boxPos.Right == keeperPos) return keeperPos.Right;
+            if (boxPos.Bottom == keeperPos) return keeperPos.Bottom;
+
+            return null;
         }
 
         //private void SortLocations()
@@ -635,6 +761,21 @@ namespace Sokoban.Network
             KeeperPosition = GetPosition(GetOppositeKey(key), boxPosition).Value;
 
             DetectAreas();
+        }
+
+        private void SimulateBoxPositions(IEnumerable<int> boxPositions)
+        {
+            foreach (var box in dynamicGraph.Values.Where(x => x.HoldsBox))
+            {
+                box.HoldsBox = false;
+                box.StepsToKeeper = 0;
+            }
+
+            foreach (var box in dynamicGraph.Keys.Intersect(boxPositions))
+            {
+                dynamicGraph[box].HoldsBox = true;
+                dynamicGraph[box].StepsToKeeper = -1;
+            }
         }
 
         private IEnumerable<SokobanPathItem> GetEntryPoints(CellStaticInfo locationCell)
